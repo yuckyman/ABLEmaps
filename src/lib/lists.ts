@@ -40,6 +40,16 @@ function saveLocal(lists: LocalList[]) {
 let nextLocalId = 0
 
 export async function fetchLists(): Promise<SavedList[]> {
+  try {
+    const res = await fetch('/api/lists')
+    if (res.ok) {
+      const data: SavedList[] = await res.json()
+      saveLocal(data.map(d => ({
+        id: d.id, name: d.name, url: d.url, places: [], place_count: d.place_count, created_at: d.created_at,
+      })))
+      return data
+    }
+  } catch { /* fall through */ }
   return loadLocal().map(l => ({
     id: l.id, name: l.name, url: l.url, place_count: l.place_count, created_at: l.created_at,
   }))
@@ -68,6 +78,10 @@ export async function saveList(name: string, url: string, places: Place[]): Prom
 }
 
 export async function loadList(id: number): Promise<SavedListDetail | null> {
+  try {
+    const res = await fetch(`/api/lists?id=${id}`)
+    if (res.ok) return res.json()
+  } catch { /* fall through */ }
   const local = loadLocal().find(l => l.id === id)
   return local ? { id: local.id, name: local.name, url: local.url, places: local.places } : null
 }
