@@ -1,24 +1,54 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import type { Place, StopState, Status } from './types'
 import { resolvePlaces } from './lib/geocode'
 import { fetchDistanceMatrix, fetchRoute } from './lib/osrm'
 import { solveTsp } from './lib/tsp'
+import { loadSession, saveSession } from './lib/storage'
 import CollapsibleSection from './components/CollapsibleSection'
 import ImportPanel from './components/ImportPanel'
 import MapView from './components/MapView'
 import ControlPanel, { DEFAULT_OFFICE } from './components/ControlPanel'
 import StopList from './components/StopList'
 
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const saved = localStorage.getItem(key)
+    return saved ? JSON.parse(saved) : fallback
+  } catch { return fallback }
+}
+
 export default function App() {
-  const [places, setPlaces] = useState<Place[]>([])
-  const [stopCount, setStopCount] = useState(10)
-  const [stops, setStops] = useState<Record<number, StopState>>({})
+  const [places, setPlaces] = useState<Place[]>(() => loadFromStorage<Place[]>('ablemaps-places', []))
+  const [stopCount, setStopCount] = useState(
+    () => loadFromStorage<number>('ablemaps-stopCount', 10),
+  )
+  const [stops, setStops] = useState<Record<number, StopState>>(
+    () => loadFromStorage<Record<number, StopState>>('ablemaps-stops', {}),
+  )
   const [orderedIndices, setOrderedIndices] = useState<number[]>([])
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([])
   const [totalDistance, setTotalDistance] = useState<number | null>(null)
   const [status, setStatus] = useState<Status>({ type: 'idle' })
   const [resolving, setResolving] = useState(false)
   const [routeVersion, setRouteVersion] = useState(0)
+
+  useEffect(() => { localStorage.setItem('ablemaps-places', JSON.stringify(places)) }, [places])
+  useEffect(() => { localStorage.setItem('ablemaps-stops', JSON.stringify(stops)) }, [stops])
+  useEffect(() => { localStorage.setItem('ablemaps-stopCount', JSON.stringify(stopCount)) }, [stopCount])
+
+  /* Cloudflare D1 sync — fire-and-forget on state changes */
+  useEffect(() => { saveSession(places, stops, stopCount) }, [places, stops, stopCount])
+
+  /* On mount, try to load from D1 (overrides localStorage if available) */
+  useEffect(() => {
+    loadSession().then(session => {
+      if (session) {
+        setPlaces(session.places)
+        setStops(session.stops)
+        setStopCount(session.stopCount)
+      }
+    })
+  }, [])
 
   const handleImport = useCallback(async (raw: Place[]) => {
     setPlaces([])
@@ -41,12 +71,16 @@ export default function App() {
     setTotalDistance(null)
     setStatus({ type: 'idle' })
 
-    const validIndices = places
+  const validIndices = places
       .map((p, i) => ({ p, i }))
       .filter(({ p }) => p.latitude != null && p.longitude != null)
+      .filter(({ i }) => !stops[i]?.visited)
       .map(({ i }) => i)
 
-    if (validIndices.length === 0) return
+    if (validIndices.length === 0) {
+      setStatus({ type: 'error', message: 'All places visited. Import new places to continue.' })
+      return
+    }
 
     const n = Math.min(stopCount, validIndices.length)
     const chosenIndices = validIndices.slice(0, n)
@@ -82,7 +116,7 @@ export default function App() {
       console.error('[optimize] FAILED:', err)
       setStatus({ type: 'error', message })
     }
-  }, [places, stopCount])
+  }, [places, stopCount, stops])
 
   const handleToggleVisited = useCallback((index: number) => {
     setStops(prev => ({
@@ -99,6 +133,7 @@ export default function App() {
   }, [])
 
   const validCount = places.filter(p => p.latitude != null && p.longitude != null).length
+  const unvisitedCount = places.filter((p, i) => p.latitude != null && p.longitude != null && !stops[i]?.visited).length
 
   return (
     <div className="h-screen flex flex-col">
@@ -122,7 +157,7 @@ export default function App() {
             <ControlPanel
               stopCount={stopCount}
               onStopCountChange={setStopCount}
-              placeCount={validCount}
+              placeCount={unvisitedCount}
               onOptimize={handleOptimize}
               status={status}
             />
