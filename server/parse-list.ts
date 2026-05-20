@@ -6,10 +6,27 @@ export interface Place {
 }
 
 export async function parseSharedList(url: string): Promise<{ listName: string; owner: string | null; places: Place[] }> {
-  const pageHtml = await fetchHtml(url)
+  const pageHtml = await fetchWithRetry(() => fetchHtml(url), 'list page')
   const apiUrl = extractGetlistUrl(pageHtml)
-  const raw = await fetchRaw(apiUrl)
+  const raw = await fetchWithRetry(() => fetchRaw(apiUrl), 'list data')
   return parseResponse(raw)
+}
+
+async function fetchWithRetry<T>(fn: () => Promise<T>, label: string, retries = 3, delay = 2000): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : ''
+      if (message.includes('Too Many Requests') && i < retries - 1) {
+        console.log(`[parse-list] ${label} rate limited, retrying in ${delay * (i + 1)}ms...`)
+        await new Promise(r => setTimeout(r, delay * (i + 1)))
+        continue
+      }
+      throw err
+    }
+  }
+  throw new Error(`Max retries exceeded fetching ${label}`)
 }
 
 async function fetchHtml(url: string): Promise<string> {

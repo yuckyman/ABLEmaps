@@ -9,6 +9,7 @@ interface PlaceStub { name: string; latitude?: number | null; longitude?: number
 function apiPlugin(): Plugin {
   const savedLists = new Map<number, { name: string; url: string; places: PlaceStub[] }>()
   let listIdCounter = 0
+  const parseCache = new Map<string, { result: unknown }>()
 
   return {
     name: 'api',
@@ -27,7 +28,15 @@ function apiPlugin(): Plugin {
           const { url } = JSON.parse(body)
           if (!url) throw new Error('url required')
 
+          const cached = parseCache.get(url)
+          if (cached) {
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify(cached.result))
+            return
+          }
+
           const result = await parseSharedList(url)
+          parseCache.set(url, { result })
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify(result))
         } catch (err) {
