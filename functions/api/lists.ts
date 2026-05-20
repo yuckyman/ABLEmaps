@@ -1,9 +1,9 @@
 interface Env {
-  DB: D1Database
+  ablemaps_db: D1Database
 }
 
 export const onRequest: PagesFunction<Env> = async (ctx) => {
-  const db = ctx.env.DB
+  const db = ctx.env.ablemaps_db
   const url = new URL(ctx.request.url)
   const id = url.searchParams.get('id')
 

@@ -35,8 +35,8 @@ export default function ImportPanel({ onImport }: Props) {
       const result = await res.json()
       if (!result.places?.length) throw new Error('No places found')
 
-      saveList(result.listName || 'Imported', url, result.places)
-      refreshLists()
+      await saveList(result.listName || 'Imported', url, result.places)
+      await refreshLists()
       onImport(result.places)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse list')

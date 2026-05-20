@@ -1,9 +1,9 @@
 interface Env {
-  DB: D1Database
+  ablemaps_db: D1Database
 }
 
 export const onRequest: PagesFunction<Env> = async (ctx) => {
-  const db = ctx.env.DB
+  const db = ctx.env.ablemaps_db
 
   if (ctx.request.method === 'GET') {
     let row = await db.prepare('SELECT places, stops, stop_count FROM session WHERE id = 1').first()

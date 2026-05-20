@@ -1,0 +1,7 @@
+name = "ablemaps"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "ablemaps_db"
+database_name = "ablemaps-db"
+database_id = "83f39d9a-ecfb-4c98-bda4-e32bbe60b685"
