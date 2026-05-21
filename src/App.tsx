@@ -31,6 +31,7 @@ export default function App() {
   const [status, setStatus] = useState<Status>({ type: 'idle' })
   const [resolving, setResolving] = useState(false)
   const [routeVersion, setRouteVersion] = useState(0)
+  const [mobileView, setMobileView] = useState<'map' | 'route'>('map')
 
   useEffect(() => { localStorage.setItem('ablemaps-places', JSON.stringify(places)) }, [places])
   useEffect(() => { localStorage.setItem('ablemaps-stops', JSON.stringify(stops)) }, [stops])
@@ -139,11 +140,12 @@ export default function App() {
     <div className="h-screen flex flex-col">
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
         <h1 className="text-xl font-bold text-blue-600">ABLEmaps</h1>
-        <span className="text-sm text-gray-400">{places.length} places loaded ({validCount} with coords)</span>
+        <span className="text-sm text-gray-400 hidden sm:inline">{places.length} places loaded ({validCount} with coords)</span>
       </header>
 
       <div className="flex-1 flex gap-4 p-4 min-h-0">
-        <div className="w-80 shrink-0 flex flex-col h-full overflow-y-auto">
+        {/* Sidebar — hidden on mobile when map is active */}
+        <div className={`flex flex-col gap-4 w-full md:w-80 md:shrink-0 h-full overflow-y-auto ${mobileView === 'map' ? 'hidden md:flex' : 'flex'}`}>
           <CollapsibleSection key={`import-${routeVersion}`} title="Import Places" defaultOpen={routeVersion === 0}>
             <ImportPanel onImport={handleImport} />
             {resolving && (
@@ -175,12 +177,13 @@ export default function App() {
           {orderedIndices.length > 0 && (
             <div className="bg-gray-50 rounded-lg shadow p-3 text-xs text-gray-500 font-mono">
               <div>Stops: {orderedIndices.length} &middot; Route points: {routeCoords.length}</div>
-              <div>Status: {status.type}{status.type === 'error' ? `: ${status.message}` : ''}</div>
+              <div className="break-words">Status: {status.type}{status.type === 'error' ? `: ${status.message}` : ''}</div>
             </div>
           )}
         </div>
 
-        <div className="flex-1 min-h-0">
+        {/* Map — hidden on mobile when route tab is active */}
+        <div className={`flex-1 min-h-0 ${mobileView === 'route' ? 'hidden md:block' : 'block'}`}>
           <MapView
             places={places}
             office={DEFAULT_OFFICE}
@@ -189,6 +192,28 @@ export default function App() {
           />
         </div>
       </div>
+
+      {/* Mobile bottom tab bar */}
+      <nav className="md:hidden flex border-t border-gray-200 bg-white shrink-0">
+        <button
+          onClick={() => setMobileView('map')}
+          className={`flex-1 flex flex-col items-center py-2 text-xs font-medium ${mobileView === 'map' ? 'text-blue-600 border-t-2 border-blue-600 -mt-px' : 'text-gray-400'}`}
+        >
+          <svg className="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
+          Map
+        </button>
+        <button
+          onClick={() => setMobileView('route')}
+          className={`flex-1 flex flex-col items-center py-2 text-xs font-medium ${mobileView === 'route' ? 'text-blue-600 border-t-2 border-blue-600 -mt-px' : 'text-gray-400'}`}
+        >
+          <svg className="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          Route
+        </button>
+      </nav>
     </div>
   )
 }
