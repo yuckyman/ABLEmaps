@@ -173,13 +173,9 @@ export default function App() {
             onToggleVisited={handleToggleVisited}
             onNotesChange={handleNotesChange}
             totalDistance={totalDistance}
+            routeCoords={routeCoords}
+            status={status}
           />
-          {orderedIndices.length > 0 && (
-            <div className="bg-gray-50 rounded-lg shadow p-3 text-xs text-gray-500 font-mono">
-              <div>Stops: {orderedIndices.length} &middot; Route points: {routeCoords.length}</div>
-              <div className="break-words">Status: {status.type}{status.type === 'error' ? `: ${status.message}` : ''}</div>
-            </div>
-          )}
         </div>
 
         {/* Map — hidden on mobile when route tab is active */}

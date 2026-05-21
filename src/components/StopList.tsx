@@ -1,4 +1,4 @@
-import type { Place, Office, StopState } from '../types'
+import type { Place, Office, StopState, Status } from '../types'
 
 interface Props {
   places: Place[]
@@ -8,6 +8,8 @@ interface Props {
   onToggleVisited: (index: number) => void
   onNotesChange: (index: number, notes: string) => void
   totalDistance: number | null
+  routeCoords: [number, number][]
+  status: Status
 }
 
 interface Point {
@@ -73,7 +75,7 @@ function formatDist(m: number | null) {
 }
 
 export default function StopList({
-  places, office, orderedIndices, stops, onToggleVisited, onNotesChange, totalDistance,
+  places, office, orderedIndices, stops, onToggleVisited, onNotesChange, totalDistance, routeCoords, status,
 }: Props) {
   if (orderedIndices.length === 0) {
     return (
@@ -130,7 +132,7 @@ export default function StopList({
         </div>
       </div>
 
-      <div className="divide-y divide-gray-100 overflow-y-auto max-h-[500px]">
+      <div className="divide-y divide-gray-100 overflow-y-auto">
         {orderedIndices.map((placeIdx, order) => {
           const place = places[placeIdx]
           const state = stops[placeIdx] || { visited: false, notes: '' }
@@ -172,6 +174,13 @@ export default function StopList({
             </div>
           )
         })}
+      </div>
+
+      <div className="bg-gray-50 border-t border-gray-100 px-4 py-2 text-xs text-gray-500 font-mono flex items-center justify-between">
+        <span>Stops: {orderedIndices.length} &middot; Route points: {routeCoords.length}</span>
+        <span className={status.type === 'error' ? 'text-red-600' : ''}>
+          {status.type}{status.type === 'error' ? `: ${status.message}` : ''}
+        </span>
       </div>
     </div>
   )
